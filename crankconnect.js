@@ -20,13 +20,6 @@ let routerConnect = function (routerAuthority, route, targetLocation) {
         console.log("router connected", routerAuthority, route, targetLocation);
     });
 
-    let interval = setInterval(function () {
-        console.log("timer - here we go");
-        ws.ping(status => {
-            console.log("ping status", status, ws.isAlive);
-        });
-    }, 5000);
-
     ws.on('message', function (data) {
         // console.log("data", data);
         if (targetRequest !== undefined) {
@@ -35,7 +28,8 @@ let routerConnect = function (routerAuthority, route, targetLocation) {
         }
         else {
             // We're using a socket so we reconnect
-            routerConnect(routerAuthority, route, targetLocation);
+            console.log("headers received so emitting");
+            ws.emit("cranker__headerPacketReceived");
 
             // Now parse the cranked request
             let [requestLine, ...headerRest] = data.split("\n");
@@ -72,7 +66,6 @@ let routerConnect = function (routerAuthority, route, targetLocation) {
                 });
 
                 targetResponse.on("end", () => {
-                    clearInterval(interval);
                     ws.close();
                 });
 
@@ -92,22 +85,47 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
     return new Promise((resolve, reject) => {
         let {limit} = Object.assign({ limit: 2 }, options);
         let routers = routerAuthorityArray.map(routerAuthority => {
-            let routerConnectionNumbers = Array.from(Array(limit).keys());
-            let routerState = {
-                connections: routerConnectionNumbers.map(i => {
-                    console.log("attempting to connect router", i, routerAuthority, "to", targetLocation);
-                    return routerConnect(routerAuthority, route, targetLocation);
-                })
-            };
-            
-            routerState.connections.forEach(ws => {
-                ws.on("connection", () => routerState.lastConnectTime = new Date());
-                ws.on("error", (err) => {
-                    console.log("router web socket error", err, routerAuthority, route, targetLocation);
-                    routerConnect(routerAuthority, route, targetLocation);
-                });
-            });
+            let connections = {};
+            let routerState = {};
+            let connectEstablish = function () {
+                console.log("connectEstablish - here we go", Object.keys(connections).length, limit);
 
+                while (Object.keys(connections).length < limit) { //limit
+                    console.log("connectEstablish in loop", Object.keys(connections).length, limit);
+                    let ws = routerConnect(routerAuthority, route, targetLocation);
+                    ws.nicId = new Date().valueOf();
+                    connections[ws.nicId] = ws;
+                    ws.on("cranker__headerPacketReceived", _ => {
+                        console.log("header packet received");
+                        delete connections[ws.nicId];
+                        connectEstablish();
+                    });
+                    ws.on("connection", () => routerState.lastConnectTime = new Date());
+                    ws.on("close", _ => {
+                        console.log("router web socket end", routerAuthority, route, targetLocation);
+                        delete connections[ws.nicId];
+                    });
+                    ws.on("error", (err) => {
+                        console.log("router web socket error", err, routerAuthority, route, targetLocation);
+                        delete connections[ws.nicId];
+                    });
+                }
+                
+                // loop through and ping
+                Object.values(connections).forEach(ws => {
+                    if (ws.readyState == 1) {
+                        ws.ping(_ => {
+                            console.log("ping status", ws.readyState);
+                        });
+                    }
+                });
+            };
+            Object.assign(routerState, {
+                connections: connections,
+                interval: setInterval(connectEstablish, 5000)
+            });
+            connectEstablish();
+            
             return routerState;
         });
 
@@ -131,7 +149,7 @@ connectToRouters(["localhost:16489"], "demo", "http://localhost:8300").then(_ =>
         response.setHeader("server", "demoserver");
         response.setHeader("x-demo-response", "xxx");
         response.write("<html><head><title>this");
-        response.write("is a server</title></head><body>");
+        response.write("is a server</title><link rel='shortcut icon' href='data:image/x-icon;,' type='image/x-icon'></head><body>");
         response.end("<h1>hello</h1></body></html>");
     });
     demoServer.listen(8300);
@@ -202,7 +220,7 @@ connectToRouters(["localhost:16489"], "demo", "http://localhost:8300").then(_ =>
         assert.deepStrictEqual(statusMessage, "OK");
         assert.deepStrictEqual(chunkArray, [
             new String("<html><head><title>this"),
-            new String("is a server</title></head><body>"),
+            new String("is a server</title><link rel='shortcut icon' href='data:image/x-icon;,' type='image/x-icon'></head><body>"),
             new String("<h1>hello</h1></body></html>"),
         ]);
     };
@@ -257,9 +275,9 @@ connectToRouters(["localhost:16489"], "demo", "http://localhost:8300").then(_ =>
 
     let testAll = async function () {
         await testGet();
-        // await testPost();
-        //await testPost201();
-        //await testPost400();
+        await testPost();
+        await testPost201();
+        await testPost400();
     };
 
     testAll().then();
