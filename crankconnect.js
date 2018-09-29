@@ -3,9 +3,7 @@
 const WebSocket = require("ws");
 const https = require("https");
 const http = require("http");
-
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
+const crypto = require("crypto");
 
 let routerConnect = function (routerAuthority, route, targetLocation) {
     let targetRequest = undefined;
@@ -17,7 +15,7 @@ let routerConnect = function (routerAuthority, route, targetLocation) {
     });
 
     ws.on('open', function () {
-        console.log("router connected", routerAuthority, route, targetLocation);
+        console.log("router connected", ws.nicId, routerAuthority, route, targetLocation);
     });
 
     ws.on('message', function (data) {
@@ -83,6 +81,7 @@ let routerConnect = function (routerAuthority, route, targetLocation) {
 // Returns a promise resolving to an Array of router connection Arrays
 const connectToRouters = function (routerAuthorityArray, route, targetLocation, options = {}) {
     return new Promise((resolve, reject) => {
+        let closingState = false;
         let {limit} = Object.assign({ limit: 2 }, options);
         let routers = routerAuthorityArray.map(routerAuthority => {
             let connections = {};
@@ -90,23 +89,30 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
             let connectEstablish = function () {
                 console.log("connectEstablish - here we go", Object.keys(connections).length, limit);
 
-                while (Object.keys(connections).length < limit) { //limit
+                while (closingState == false
+                       && Object.keys(connections).length < limit) {
                     console.log("connectEstablish in loop", Object.keys(connections).length, limit);
                     let ws = routerConnect(routerAuthority, route, targetLocation);
-                    ws.nicId = new Date().valueOf();
+                    ws.nicId = crypto.randomBytes(16).toString("hex");
+
                     connections[ws.nicId] = ws;
+
                     ws.on("cranker__headerPacketReceived", _ => {
-                        console.log("header packet received");
                         delete connections[ws.nicId];
                         connectEstablish();
                     });
-                    ws.on("connection", () => routerState.lastConnectTime = new Date());
+                    ws.on("open", () => {
+                        if (closingState) {
+                            ws.close();
+                        }
+                        routerState.lastConnectTime = new Date()
+                    });
                     ws.on("close", _ => {
-                        console.log("router web socket end", routerAuthority, route, targetLocation);
+                        console.log("router web socket end", ws.nicId, routerAuthority, route, targetLocation);
                         delete connections[ws.nicId];
                     });
                     ws.on("error", (err) => {
-                        console.log("router web socket error", err, routerAuthority, route, targetLocation);
+                        console.log("router web socket error", ws.nicId, err, routerAuthority, route, targetLocation);
                         delete connections[ws.nicId];
                     });
                 }
@@ -130,157 +136,21 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
         });
 
         // We need to do this because of a bug in router we think... this is fixed elsewhere but not in the current github version
-        setTimeout(_ => resolve(routers), 1000);
+        setTimeout(_ => resolve({
+            close: function () {
+                closingState = true;
+                routers.forEach(router => {
+                    clearInterval(router.interval);
+                    Object.values(router.connections)
+                        .filter(ws => ws.readyState == 1)
+                        .forEach(ws => ws.close());
+                });
+            },
+            routers: routers
+        }), 1000);
     });
 };
 
-connectToRouters(["localhost:16489"], "demo", "http://localhost:8300").then(_ => {
-    console.log("after connect to routers");
-
-    // Tests
-    const querystring = require("querystring");
-    const assert = require("assert");
-
-    // Setup the demo server
-    let demoServer = http.createServer((request, response) => {
-        console.log("demoserver request headers", request.headers);
-        let toReturnStatus = request.headers["x-expected-return-status"];
-        response.statusCode = toReturnStatus == undefined ? 200 : toReturnStatus;
-        response.setHeader("server", "demoserver");
-        response.setHeader("x-demo-response", "xxx");
-        response.write("<html><head><title>this");
-        response.write("is a server</title><link rel='shortcut icon' href='data:image/x-icon;,' type='image/x-icon'></head><body>");
-        response.end("<h1>hello</h1></body></html>");
-    });
-    demoServer.listen(8300);
-
-
-    let testUrl = async function (options, requestHandler) {
-        return new Promise((resolve, reject) => {
-            let req = https.request(options, function (response) {
-                console.log(
-                    options.method + "Request response headers",
-                    response.statusCode,
-                    response.statusMessage,
-                    response.headers);
-                let resultObject = {
-                    statusCode: response.statusCode,
-                    statusMessage: response.statusMessage,
-                    chunkArray: []
-                };
-                response.on("data", (d) => {
-                    let string = new String(d);
-                    resultObject.chunkArray.push(string);
-                });
-                response.on("end", function () {
-                    resolve(resultObject);
-                });
-            });
-            if (typeof requestHandler == "function") {
-                requestHandler(req);
-            }
-            req.end();
-        });
-    };
-
-    let testGet = async function () {
-        let {statusCode, statusMessage, chunkArray} = await testUrl({ 
-            host: 'localhost', 
-            port: 8443,
-            path: '/demo',
-            method: 'GET',
-            rejectUnauthorized: false,
-            requestCert: true,
-            agent: false
-        });
-        console.log("GET Result", statusCode, statusMessage, chunkArray);
-        assert.deepStrictEqual(statusCode, 200);
-        assert.deepStrictEqual(statusMessage, "OK");
-    };
-
-    let testPost = async function () {
-        const postData = querystring.stringify({
-            'msg': 'Hello World!'
-        });
-        let {statusCode, statusMessage, chunkArray} = await testUrl({ 
-            host: 'localhost', 
-            port: 8443,
-            path: '/demo',
-            method: 'POST',
-            rejectUnauthorized: false,
-            requestCert: true,
-            agent: false,
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': Buffer.byteLength(postData)
-            }
-        }, request => { request.write(postData); });
-        console.log("POST result", statusCode, statusMessage, chunkArray);
-        assert.deepStrictEqual(statusCode, 200);
-        assert.deepStrictEqual(statusMessage, "OK");
-        assert.deepStrictEqual(chunkArray, [
-            new String("<html><head><title>this"),
-            new String("is a server</title><link rel='shortcut icon' href='data:image/x-icon;,' type='image/x-icon'></head><body>"),
-            new String("<h1>hello</h1></body></html>"),
-        ]);
-    };
-
-
-    let testPost201 = async function () {
-        const postData = querystring.stringify({
-            'msg': 'Hello World!'
-        });
-        let {statusCode, statusMessage, chunkArray} = await testUrl({ 
-            host: 'localhost', 
-            port: 8443,
-            path: '/demo',
-            method: 'POST',
-            rejectUnauthorized: false,
-            requestCert: true,
-            agent: false,
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': Buffer.byteLength(postData),
-                "x-expected-return-status": "201"
-            }
-        }, request => { request.write(postData); });
-        console.log("POST result", statusCode, statusMessage, chunkArray);
-        assert.deepStrictEqual(statusCode, 201);
-        assert.deepStrictEqual(statusMessage, "Created");
-    };
-
-    let testPost400 = async function () {
-        const postData = querystring.stringify({
-            'msg': 'Hello World!'
-        });
-        let {statusCode, statusMessage, chunkArray} = await testUrl({ 
-            host: 'localhost', 
-            port: 8443,
-            path: '/demo',
-            method: 'POST',
-            rejectUnauthorized: false,
-            requestCert: true,
-            agent: false,
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Content-Length': Buffer.byteLength(postData),
-                "x-expected-return-status": "400"
-            }
-        }, request => { request.write(postData); });
-        console.log("POST result", statusCode, statusMessage, chunkArray);
-        assert.deepStrictEqual(statusCode, 400);
-        assert.deepStrictEqual(statusMessage, "Bad Request");
-    };
-
-
-    let testAll = async function () {
-        await testGet();
-        await testPost();
-        await testPost201();
-        await testPost400();
-    };
-
-    testAll().then();
-});
+module.exports = connectToRouters;
 
 // End
