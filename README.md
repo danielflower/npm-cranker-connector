@@ -65,7 +65,7 @@ A function to connect to the crankers specified in the
 `route-prefix`. Requests from the cranker routers will be proxied to
 the `target-location` which is an `http` or `https` base URI.
 
-`cranker-router-authority-list` - an Array of authorities (host name +
+Parameter `cranker-router-authority-list` - an Array of authorities (host name +
 ":" + port) which specify cranker routers. The cranker routers are
 presumed to run version 1.0 of the cranker protocol and to be
 available on `wss`.
@@ -81,7 +81,7 @@ certificate options for cranker right now. You can eiher turn off TLS
 certifcate validation (see Turning Off Node Certifcate Validation,
 below) or use only operating system trusted certifcates.*
 
-`route-prefix` - a string which will be used by cranker router to send
+Parameter `route-prefix` - a string which will be used by cranker router to send
 traffic to this connector.
 
 It does not include the leading `/`.
@@ -90,7 +90,7 @@ For example, if you want a cranker router to send you traffic directed
 to the router's `/demo` such as `/demo/new-car` or just `/demo`, then
 you would use the route prefix: `demo`.
 
-`target-location` - a string which specifies the base URI (scheme +
+Parameter `target-location` - a string which specifies the base URI (scheme +
 "//" + authority and *no* path) for the target server. The target
 server you are proxying requests to from the cranker router.
 
