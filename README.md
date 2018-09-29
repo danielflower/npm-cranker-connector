@@ -58,7 +58,9 @@ let listener = demoServer.listen(0, "localhost", function () {
 
 ## Doc
 
-*connectToRouters(cranker-router-authority-list, route-prefix, target-location)*
+Here are docs for the functions and objects.
+
+### connectToRouters(cranker-router-authority-list, route-prefix, target-location)
 
 A function to connect to the crankers specified in the
 `cranker-router-authority-list` with the specified
@@ -81,6 +83,8 @@ certificate options for cranker right now. You can eiher turn off TLS
 certifcate validation (see Turning Off Node Certifcate Validation,
 below) or use only operating system trusted certifcates.*
 
+
+
 Parameter `route-prefix` - a string which will be used by cranker router to send
 traffic to this connector.
 
@@ -90,17 +94,18 @@ For example, if you want a cranker router to send you traffic directed
 to the router's `/demo` such as `/demo/new-car` or just `/demo`, then
 you would use the route prefix: `demo`.
 
+
 Parameter `target-location` - a string which specifies the base URI (scheme +
 "//" + authority and *no* path) for the target server. The target
 server you are proxying requests to from the cranker router.
 
 Examples are: `http://www.example.com:8100` or `http://localhost:3100`.
 
-***Security notice* -- npm-cranker-connector does not support proxying
+***Security notice** -- npm-cranker-connector does not support proxying
 to `https` currently*
 
 
-*Router Object*
+### Router Object
 
 An object which represents the connectivity to an individual cranker
 router. 
