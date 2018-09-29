@@ -7,6 +7,7 @@ const crypto = require("crypto");
 
 let routerConnect = function (routerAuthority, route, targetLocation) {
     let targetRequest = undefined;
+    let [scheme, targetHost, port] = targetLocation.split("/");
     let ws = new WebSocket("wss://" + routerAuthority + "/register", {
         headers: {
             CrankerProtocol: "1.0",
@@ -42,9 +43,10 @@ let routerConnect = function (routerAuthority, route, targetLocation) {
                 headers[name] = value;
             });
 
+            // FIXME - use `scheme` to make protocol decision
             targetRequest = http.request({ 
-                host: 'localhost', 
-                port: 8300,
+                host: targetHost.substring(2), 
+                port: port,
                 path: uri,
                 method: method,
                 headers: headers
