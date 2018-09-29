@@ -1,14 +1,20 @@
 {
-  "name": "npm-crank",
+  "name": "cranker-connector",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "a cranker connector for js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["routing"],
+  "author": {
+    "name": "Nic Ferrier",
+    "email": "ferrier.nic@gmail.com"
+  },
+  "contributors": [{
+    "name": "Daniel Flower",
+    "email": "flower.daniel@gmail.com"
+  }],
+  "license": "MIT",
   "dependencies": {
     "ws": "^6.0.0"
   }
