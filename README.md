@@ -60,7 +60,7 @@ let listener = demoServer.listen(0, "localhost", function () {
 
 Here are docs for the functions and objects.
 
-### connectToRouters(cranker-router-authority-list, route-prefix, target-location)
+### connectToRouters(cranker-router-authority-list, route-prefix, target-location, options)
 
 A function to connect to the crankers specified in the
 `cranker-router-authority-list` with the specified
@@ -103,6 +103,16 @@ Examples are: `http://www.example.com:8100` or `http://localhost:3100`.
 
 ***Security notice** -- npm-cranker-connector does not support proxying
 to `https` currently*
+
+
+Parameter `options` - an associative object of optional features which
+may alter or further specify the behaviour of the connector.
+
+Currently the following options only are supported:
+
+* `limit` - an integer expressing the limit of idle connections to the
+  cranker router; the cranker connector will attempt to keep this
+  number of idle connections open
 
 
 ### Router Object
