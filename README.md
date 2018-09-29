@@ -18,7 +18,7 @@ npm install cranker-connector
 
 You can embed and use this in your service like this:
 
-```
+```javascript
 let demoServer = http.createServer((request, response) => {
     console.log("demoserver request headers", request.headers);
     let toReturnStatus = request.headers["x-expected-return-status"];
@@ -45,7 +45,7 @@ Because cranker is providing your routing you do not need an
 addressable local server, instead make a server on port 0 and a port
 will be dynamically allocated by the operating system:
 
-```
+```javascript
 let listener = demoServer.listen(0, "localhost", function () {
   let port = listener.address().port;
   let routerCluster = await connectToRouters(["cranker.example.org:16489"], "demo", "http://localhost:" + port);
