@@ -55,3 +55,76 @@ let listener = demoServer.listen(0, "localhost", function () {
   demoServer.close();
 });
 ```
+
+## Doc
+
+*connectToRouters(cranker-router-authority-list, route-prefix, target-location)*
+
+A function to connect to the crankers specified in the
+`cranker-router-authority-list` with the specified
+`route-prefix`. Requests from the cranker routers will be proxied to
+the `target-location` which is an `http` or `https` base URI.
+
+`cranker-router-authority-list` - an Array of authorities (host name +
+":" + port) which specify cranker routers. The cranker routers are
+presumed to run version 1.0 of the cranker protocol and to be
+available on `wss`.
+
+The function returns a Promise which resolves to an object which has 2
+members:
+
+* `close`: a function which will shutdown all the idle cranker-router websocket connections
+* `routers`: an array of router objects, see Router Object, below
+
+***Security notice** -- there is no facility for specifying
+certificate options for cranker right now. You can eiher turn off TLS
+certifcate validation (see Turning Off Node Certifcate Validation,
+below) or use only operating system trusted certifcates.*
+
+`route-prefix` - a string which will be used by cranker router to send
+traffic to this connector.
+
+It does not include the leading `/`.
+
+For example, if you want a cranker router to send you traffic directed
+to the router's `/demo` such as `/demo/new-car` or just `/demo`, then
+you would use the route prefix: `demo`.
+
+`target-location` - a string which specifies the base URI (scheme +
+"//" + authority and *no* path) for the target server. The target
+server you are proxying requests to from the cranker router.
+
+Examples are: `http://www.example.com:8100` or `http://localhost:3100`.
+
+***Security notice* -- npm-cranker-connector does not support proxying
+to `https` currently*
+
+
+*Router Object*
+
+An object which represents the connectivity to an individual cranker
+router. 
+
+There might be multiple idle connections to a cranker router.
+
+A Router Object has 2 members:
+
+* `connections`: a map of connection objects, keyed by an Id
+* `interval`: the polling timer to check the router's idle connection limit is fully met
+
+
+## Turning Off Node Certificate Validation
+
+Because you cannot specify certifcates for self signed certificate
+cranker routers, you may want to turn off Node's TLS libraries
+certificate validation.
+
+This can be achieved like this:
+
+```javascript
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+```
+
+***Security notice** This is a blanket act. So please do not do this if
+you do not know what you are doing. It should NOT be included in
+production code.*
