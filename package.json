@@ -14,8 +14,15 @@
     "name": "Daniel Flower",
     "email": "flower.daniel@gmail.com"
   }],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicferrier/npm-cranker-connector"
+  },
   "license": "MIT",
   "dependencies": {
     "ws": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=9"
   }
 }
