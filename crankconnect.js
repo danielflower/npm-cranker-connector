@@ -7,7 +7,7 @@ const crypto = require("crypto");
 
 let routerConnect = function (routerAuthority, route, targetLocation) {
     let targetRequest = undefined;
-    let [scheme, targetHost, port] = targetLocation.split("/");
+    let [scheme, targetHost, port] = targetLocation.split(":");
     let ws = new WebSocket("wss://" + routerAuthority + "/register", {
         headers: {
             CrankerProtocol: "1.0",
