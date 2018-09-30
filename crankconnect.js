@@ -80,7 +80,6 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
                     statusMessage: statusMessage,
                     headers: headerList
                 });
-                console.log("targetResponse>", );
                 let headerLines = headerList.map(headerPair => headerPair.join(":"));
                 let headerBlock = headerLines.join("\n");
                 
@@ -141,7 +140,11 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
 
                 while (closingState == false
                        && Object.keys(connections).length < limit) {
-                    console.log("connectEstablish in loop", Object.keys(connections).length, limit);
+                    routerClusterObject.emit("crankedRouterConnecting", {
+                        authority: routerAuthority,
+                        currentIdleConnectionCount: Object.keys(connections).length,
+                        idleConnectionLimit: limit
+                    });
                     let ws = routerConnect(routerAuthority, route, targetLocation, routerClusterObject);
                     ws.nicId = crypto.randomBytes(16).toString("hex");
 
@@ -158,11 +161,16 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                         routerState.lastConnectTime = new Date()
                     });
                     ws.on("close", _ => {
-                        console.log("router web socket end", ws.nicId, routerAuthority, route, targetLocation);
+                        routerClusterObject.emit("crankedSocketClose", {
+                            ws: ws
+                        });
                         delete connections[ws.nicId];
                     });
                     ws.on("error", (err) => {
-                        console.log("router web socket error", ws.nicId, err, routerAuthority, route, targetLocation);
+                        routerClusterObject.emit("crankedSocketError", {
+                            ws: ws,
+                            error: err
+                        });
                         delete connections[ws.nicId];
                     });
                 }
@@ -171,7 +179,10 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                 Object.values(connections).forEach(ws => {
                     if (ws.readyState == 1) {
                         ws.ping(_ => {
-                            console.log("ping status", ws.readyState);
+                            routerClusterObject.emit("crankedPing", {
+                                state: ws.readyState,
+                                ws: ws
+                            });
                         });
                     }
                 });

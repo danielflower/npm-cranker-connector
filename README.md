@@ -126,7 +126,8 @@ Here's the list of events:
   * the RouterObject is trying to connect it's connections to the cranker router
 * `crankerHeadersReceived` from a RouterObject connection
   * a connection has received a header from the cranker router so the
-   connection is no longer idle.
+   connection is no longer idle and another connection to the router
+   needs to be obtained
   * quite low level debug
 * `crankerFrameReceived` from a RouterObject's connection
   * cranker router has sent us a web socket frame
@@ -138,6 +139,26 @@ Here's the list of events:
   * we made a request to and received a response from a proxy target
   * the event includes data on the request and the response as well as
     the associated cranker router websocket
+  * quite low level debug
+* `crankedRouterConnecting` from a RouterObject
+  * the router is trying to create the `limit` number of idle
+    connections to the relevant cranker router
+  * includes data on:
+    * the relevant cranker router authority
+    * the current idle connection count
+    * the idle connection limit
+  * very low level debug
+* `crankedSocketClose` from a RouterObject's connection
+  * a web socket to a cranker router is closing, because it has
+    completed it's request or because there was an error
+* `crankedSocketError` from a RouterObject's connection
+  * a web socket to a cranker router has caused an error
+  * includes data on the relevant web socket and the error
+  * quite low level debug
+* `crankedPing` from a RouterObject
+  * response to a ping to a cranker router websocket
+  * includes data on the state of the socket which is a websocket readyState
+  * very low level debug
 
 ### Router Object
 
