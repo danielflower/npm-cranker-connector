@@ -4,6 +4,8 @@ const WebSocket = require("ws");
 const https = require("https");
 const http = require("http");
 const crypto = require("crypto");
+const EventEmitter = require('events');
+
 
 let routerConnect = function (routerAuthority, route, targetLocation) {
     let targetRequest = undefined;
@@ -85,11 +87,34 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
     return new Promise((resolve, reject) => {
         let closingState = false;
         let {limit} = Object.assign({ limit: 2 }, options);
-        let routers = routerAuthorityArray.map(routerAuthority => {
+        let routers = [];
+
+        class RouterCluster extends EventEmitter {
+            constructor() { super(); }
+            close() {
+                closingState = true;
+                routers.forEach(router => {
+                    clearInterval(router.interval);
+                    Object.values(router.connections)
+                        .filter(ws => ws.readyState == 1)
+                        .forEach(ws => ws.close());
+                });
+            }
+            routerObjects() {
+                return routerObjects;
+            }
+        }
+
+        let routerClusterObject = new RouterCluster();
+        
+        let routerList = routerAuthorityArray.map(routerAuthority => {
             let connections = {};
             let routerState = {};
             let connectEstablish = function () {
-                console.log("connectEstablish - here we go", Object.keys(connections).length, limit);
+                routerClusterObject.emit("routerConnecting", {
+                    currentConnectionLength: Object.keys(connections).length,
+                    idleLimit: limit
+                });
 
                 while (closingState == false
                        && Object.keys(connections).length < limit) {
@@ -137,19 +162,11 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
             return routerState;
         });
 
-        // We need to do this because of a bug in router we think... this is fixed elsewhere but not in the current github version
-        setTimeout(_ => resolve({
-            close: function () {
-                closingState = true;
-                routers.forEach(router => {
-                    clearInterval(router.interval);
-                    Object.values(router.connections)
-                        .filter(ws => ws.readyState == 1)
-                        .forEach(ws => ws.close());
-                });
-            },
-            routers: routers
-        }), 1000);
+        Array.prototype.push.apply(routers, routerList);
+        console.log("routers>>>", routers);
+
+        // We need to do this timeout because of a bug in router we think... this is fixed elsewhere but not in the current github version
+        setTimeout(_ => resolve(routerClusterObject), 1000);
     });
 };
 

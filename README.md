@@ -72,18 +72,13 @@ Parameter `cranker-router-authority-list` - an Array of authorities (host name +
 presumed to run version 1.0 of the cranker protocol and to be
 available on `wss`.
 
-The function returns a Promise which resolves to an object which has 2
-members:
-
-* `close`: a function which will shutdown all the idle cranker-router websocket connections
-* `routers`: an array of router objects, see Router Object, below
+The function returns a Promise which resolves to a RouterCluster
+object. 
 
 ***Security notice** -- there is no facility for specifying
 certificate options for cranker right now. You can eiher turn off TLS
 certifcate validation (see Turning Off Node Certifcate Validation,
 below) or use only operating system trusted certifcates.*
-
-
 
 Parameter `route-prefix` - a string which will be used by cranker router to send
 traffic to this connector.
@@ -113,6 +108,26 @@ Currently the following options only are supported:
 * `limit` - an integer expressing the limit of idle connections to the
   cranker router; the cranker connector will attempt to keep this
   number of idle connections open
+
+
+### Router Cluster Object
+
+RouterCluster objects have 2 members:
+
+* `close`: a function which will shutdown all the idle cranker-router websocket connections
+* `routers`: an array of router objects, see Router Object, below
+
+RouterClusters also emit events. These are the primary way of tracking
+what's going on inside the cranker connector.
+
+Here's the list of events:
+
+* `routerConnecting` from a RouterObject
+ * the RouterObject is trying to connect it's connections to the cranker router
+* `crankerHeadersReceived` from a RouterObject connection
+ * a connection has received a header from the cranker router so the
+   connection is no longer idle.
+   
 
 
 ### Router Object
