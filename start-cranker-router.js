@@ -40,7 +40,7 @@ async function findPathDir(exe, pathVar) {
 
 let startCrankerRouter = async function () {
     let javaBinDir = await findPathDir("java");
-    let javaBin = path.join(javaBinDir, "java");
+    let javaBin = path.join(javaBinDir, process.platform === "win32" ? "java.exe" : "java");
     let javaExists = await fs.promises.access(javaBin, fs.constants.R_OK);
     if (!javaExists) {
         return [new Error("no java could be found in PATH")];
