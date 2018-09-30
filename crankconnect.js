@@ -7,7 +7,7 @@ const crypto = require("crypto");
 const EventEmitter = require('events');
 
 
-let routerConnect = function (routerAuthority, route, targetLocation) {
+let routerConnect = function (routerAuthority, route, targetLocation, routerClusterObject) {
     let targetRequest = undefined;
     let [scheme, targetHost, port] = targetLocation.split(":");
     let ws = new WebSocket("wss://" + routerAuthority + "/register", {
@@ -18,18 +18,29 @@ let routerConnect = function (routerAuthority, route, targetLocation) {
     });
 
     ws.on('open', function () {
-        console.log("router connected", ws.nicId, routerAuthority, route, targetLocation);
+        routerClusterObject.emit("crankerConnected", {
+            ws: ws,
+            authority: routerAuthority,
+            route: route,
+            targetLocation, targetLocation
+        });
     });
 
     ws.on('message', function (data) {
-        // console.log("data", data);
+        routerClusterObject.emit("crankerFrameReceived", {
+            data: data,
+            ws: ws
+        });
+
         if (targetRequest !== undefined) {
             // continuing an already established request
             targetRequest.write(data);
         }
         else {
             // We're using a socket so we reconnect
-            console.log("headers received so emitting");
+            routerClusterObject.emit("crankerHeadersReceived", {
+                connection: ws
+            });
             ws.emit("cranker__headerPacketReceived");
 
             // Now parse the cranked request
@@ -57,7 +68,19 @@ let routerConnect = function (routerAuthority, route, targetLocation) {
                 let statusMessage = targetResponse.statusMessage;
                 let headerList = Object.keys(targetResponse.headers)
                     .map(headerName => [headerName, targetResponse.headers[headerName]]);
-                console.log("targetResponse>", statusCode, statusMessage, headerList);
+
+                routerClusterObject.emit("crankedTargetResponse", {
+                    ws: ws,
+                    crankedRequest: {
+                        uri: uri,
+                        method: method,
+                        headers: headers
+                    },
+                    statusCode: statusCode,
+                    statusMessage: statusMessage,
+                    headers: headerList
+                });
+                console.log("targetResponse>", );
                 let headerLines = headerList.map(headerPair => headerPair.join(":"));
                 let headerBlock = headerLines.join("\n");
                 
@@ -119,7 +142,7 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                 while (closingState == false
                        && Object.keys(connections).length < limit) {
                     console.log("connectEstablish in loop", Object.keys(connections).length, limit);
-                    let ws = routerConnect(routerAuthority, route, targetLocation);
+                    let ws = routerConnect(routerAuthority, route, targetLocation, routerClusterObject);
                     ws.nicId = crypto.randomBytes(16).toString("hex");
 
                     connections[ws.nicId] = ws;
@@ -163,7 +186,6 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
         });
 
         Array.prototype.push.apply(routers, routerList);
-        console.log("routers>>>", routers);
 
         // We need to do this timeout because of a bug in router we think... this is fixed elsewhere but not in the current github version
         setTimeout(_ => resolve(routerClusterObject), 1000);

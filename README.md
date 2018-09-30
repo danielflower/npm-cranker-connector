@@ -127,8 +127,17 @@ Here's the list of events:
 * `crankerHeadersReceived` from a RouterObject connection
   * a connection has received a header from the cranker router so the
    connection is no longer idle.
-   
-
+  * quite low level debug
+* `crankerFrameReceived` from a RouterObject's connection
+  * cranker router has sent us a web socket frame
+  * very low level debug
+* `crankerConnected` from a RouterObject's connection
+  * a socket has connected to cranker router
+  * very low level debug
+* `crankedTargetResponse` from a RouterObject's connection
+  * we made a request to and received a response from a proxy target
+  * the event includes data on the request and the response as well as
+    the associated cranker router websocket
 
 ### Router Object
 
