@@ -192,9 +192,9 @@ production code.*
 
 ## Testing
 
-You can run `test.js` but you need an evironment variable `JAVA_HOME` to
-be set pointing to a JRE (or JDK) version 8.
+You can run `test.js` but you need a java binary in the PATH
+somewhere. It should be a JRE or JDK 8.
 
 The repository includes a pre-compiled crank4j router on JDK8.
 
-If `JAVA_HOME` is not set the test will `process.exit`.
+If a java cannot be found the test will `process.exit`.
