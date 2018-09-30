@@ -123,9 +123,9 @@ what's going on inside the cranker connector.
 Here's the list of events:
 
 * `routerConnecting` from a RouterObject
- * the RouterObject is trying to connect it's connections to the cranker router
+  * the RouterObject is trying to connect it's connections to the cranker router
 * `crankerHeadersReceived` from a RouterObject connection
- * a connection has received a header from the cranker router so the
+  * a connection has received a header from the cranker router so the
    connection is no longer idle.
    
 
