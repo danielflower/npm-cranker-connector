@@ -1,6 +1,6 @@
 {
   "name": "cranker-connector",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "a cranker connector for js",
   "main": "crankconnect.js",
   "scripts": {
