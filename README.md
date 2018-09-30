@@ -188,3 +188,13 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 ***Security notice** This is a blanket act. So please do not do this if
 you do not know what you are doing. It should NOT be included in
 production code.*
+
+
+## Testing
+
+You can run test.js but you need an evironment variable JAVA_HOME to
+be set pointing to a JRE (or JDK) version 8.
+
+The repository includes a pre-compiled crank4j router on JDK8.
+
+If JAVA_HOME is not set the test will `process.exit`.
