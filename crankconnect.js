@@ -123,7 +123,7 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                 });
             }
             routerObjects() {
-                return routerObjects;
+                return routers;
             }
         }
 
