@@ -65,7 +65,9 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
             
             let headers = {};
             headerArray.forEach(header => {
-                let [name, value] = header.split(":", 2);
+                let colonPos = header.indexOf(":");
+                let name = header.substring(0, colonPos);
+                let value = header.subsrting(colonPos+1).trim();
                 headers[name] = value;
             });
 
