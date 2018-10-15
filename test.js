@@ -6,6 +6,8 @@ const connectToRouters = require("./crankconnect.js");
 const startCrankerRouter = require("./start-cranker-router.js");
 const querystring = require("querystring");
 const assert = require("assert");
+const fetch = require("node-fetch");
+const formData = require("form-data");
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
@@ -15,7 +17,11 @@ let main = async function () {
         console.log("test error", routerError);
         process.exit(1);
     }
-    let routers = await connectToRouters(["localhost:16489"], "demo", "http://localhost:8300");
+    let routers = await connectToRouters(
+        ["localhost:16489"],
+        "demo",
+        "http://localhost:8300"
+    );
     console.log("after connect to routers");
     
     // Setup the demo server
@@ -39,7 +45,8 @@ let main = async function () {
                         options.method + "Request response headers",
                         response.statusCode,
                         response.statusMessage,
-                        response.headers);
+                        response.headers
+                    );
                     let resultObject = {
                         statusCode: response.statusCode,
                         statusMessage: response.statusMessage,
@@ -86,7 +93,8 @@ let main = async function () {
 
     let testPost = async function () {
         const postData = querystring.stringify({
-            'msg': 'Hello World!'
+            'msg': 'Hello World!',
+            "another": "more data"
         });
         let {statusCode, statusMessage, chunkArray} = await testUrl({ 
             host: 'localhost', 
@@ -100,7 +108,9 @@ let main = async function () {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Content-Length': Buffer.byteLength(postData)
             }
-        }, request => { request.write(postData); });
+        }, request => {
+            request.write(postData);
+        });
         console.log("POST result", statusCode, statusMessage, chunkArray);
         assert.deepStrictEqual(statusCode, 200);
         assert.deepStrictEqual(statusMessage, "OK");
@@ -110,7 +120,6 @@ let main = async function () {
             new String("<h1>hello</h1></body></html>"),
         ]);
     };
-
 
     let testPost201 = async function () {
         const postData = querystring.stringify({
@@ -129,7 +138,9 @@ let main = async function () {
                 'Content-Length': Buffer.byteLength(postData),
                 "x-expected-return-status": "201"
             }
-        }, request => { request.write(postData); });
+        }, request => {
+            request.write(postData);
+        });
         console.log("POST result", statusCode, statusMessage, chunkArray);
         assert.deepStrictEqual(statusCode, 201);
         assert.deepStrictEqual(statusMessage, "Created");
@@ -152,7 +163,9 @@ let main = async function () {
                 'Content-Length': Buffer.byteLength(postData),
                 "x-expected-return-status": "400"
             }
-        }, request => { request.write(postData); });
+        }, request => {
+            request.write(postData);
+        });
         console.log("POST result", statusCode, statusMessage, chunkArray);
         assert.deepStrictEqual(statusCode, 400);
         assert.deepStrictEqual(statusMessage, "Bad Request");

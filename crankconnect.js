@@ -6,11 +6,14 @@ const http = require("http");
 const crypto = require("crypto");
 const EventEmitter = require('events');
 
+let routerConnect = function (routerAuthority, route, targetLocation, routerClusterObject, options) {
+    let { _do_untls } = options == undefined ? {} : options;
 
-let routerConnect = function (routerAuthority, route, targetLocation, routerClusterObject) {
     let targetRequest = undefined;
     let [scheme, targetHost, port] = targetLocation.split(":");
-    let ws = new WebSocket("wss://" + routerAuthority + "/register", {
+    let protocol = _do_untls ? "ws" : "wss";
+
+    let ws = new WebSocket(protocol + "://" + routerAuthority + "/register", {
         headers: {
             CrankerProtocol: "1.0",
             Route: route
@@ -34,7 +37,17 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
 
         if (targetRequest !== undefined) {
             // continuing an already established request
-            targetRequest.write(data);
+            try {
+                if ("_3" == new String(data)) {
+                    targetRequest.end();
+                }
+                else {
+                    targetRequest.write(data);
+                }
+            }
+            catch (e) {
+                // encoding problem dealing with end?
+            }
         }
         else {
             // We're using a socket so we reconnect
@@ -57,13 +70,14 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
             });
 
             // FIXME - use `scheme` to make protocol decision
-            targetRequest = http.request({ 
+            let requestOpts = { 
                 host: targetHost.substring(2), 
                 port: port,
                 path: uri,
                 method: method,
                 headers: headers
-            }, function (targetResponse) {
+            };
+            targetRequest = http.request(requestOpts, function (targetResponse) {
                 let statusCode = targetResponse.statusCode;
                 let statusMessage = targetResponse.statusMessage;
                 let headerList = Object.keys(targetResponse.headers)
@@ -108,7 +122,7 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
 const connectToRouters = function (routerAuthorityArray, route, targetLocation, options = {}) {
     return new Promise((resolve, reject) => {
         let closingState = false;
-        let {limit} = Object.assign({ limit: 2 }, options);
+        let { limit, deferConnect } = Object.assign({ limit: 2 }, options);
         let routers = [];
 
         class RouterCluster extends EventEmitter {
@@ -145,7 +159,7 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                         currentIdleConnectionCount: Object.keys(connections).length,
                         idleConnectionLimit: limit
                     });
-                    let ws = routerConnect(routerAuthority, route, targetLocation, routerClusterObject);
+                    let ws = routerConnect(routerAuthority, route, targetLocation, routerClusterObject, options);
                     ws.nicId = crypto.randomBytes(16).toString("hex");
 
                     connections[ws.nicId] = ws;
@@ -191,7 +205,14 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                 connections: connections,
                 interval: setInterval(connectEstablish, 5000)
             });
-            connectEstablish();
+
+            // Allow deferred connectivity
+            if (deferConnect) {
+                routerClusterObject.connect = connectEstablish;
+            }
+            else {
+                connectEstablish();
+            }
             
             return routerState;
         });
