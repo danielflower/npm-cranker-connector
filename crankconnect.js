@@ -29,6 +29,15 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
         });
     });
 
+    ws.on("close", function () {
+        routerClusterObject.emit("crankerDisconnected", {
+            ws: ws,
+            authority: routerAuthority,
+            route: route,
+            targetLocation, targetLocation
+        });
+    });
+
     ws.on('message', function (data) {
         routerClusterObject.emit("crankerFrameReceived", {
             data: data,
@@ -140,11 +149,24 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
             constructor() { super(); }
             close() {
                 closingState = true;
-                routers.forEach(router => {
-                    clearInterval(router.interval);
-                    Object.values(router.connections)
-                        .filter(ws => ws.readyState == 1)
-                        .forEach(ws => ws.close());
+                return new Promise((resolve, reject) => {
+                    let closeInterval = setInterval(_ => {
+                        let connections = routers.map(router => Object.values(router.connections));
+                        // Flatten it
+                        let cons = connections.reduce((acc, val) => acc.concat(val), []);
+                        let notClosed = cons.filter(con => con.readyState < 3);
+                        if (notClosed.length == 0) {
+                            clearInterval(closeInterval);
+                            resolve(true);
+                        }
+                    }, 10);
+
+                    routers.forEach(router => {
+                        clearInterval(router.interval);
+                        Object.values(router.connections)
+                            .filter(ws => ws.readyState == 1)
+                            .forEach(ws => ws.close());
+                    });
                 });
             }
             routerObjects() {
