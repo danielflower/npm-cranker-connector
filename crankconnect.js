@@ -102,11 +102,20 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
                 ws.send(`HTTP/1.1 ${statusCode} ${statusMessage}\n${headerBlock}\n\n`);
                 
                 targetResponse.on("data", (d) => {
-                    ws.send(d);
+                    if (ws.readyState == 1) {
+                        ws.send(d);
+                    }
                 });
 
                 targetResponse.on("end", () => {
-                    ws.close();
+                    if (ws.readyState != 3) {
+                        try {
+                            ws.close();
+                        }
+                        catch (e) {
+                            console.log("crankerConnector failure to close ws - readyState>", ws.readyState);
+                        }
+                    }
                 });
 
             });
