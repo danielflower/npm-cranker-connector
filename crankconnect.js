@@ -25,7 +25,7 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
             ws: ws,
             authority: routerAuthority,
             route: route,
-            targetLocation, targetLocation
+            targetLocation: targetLocation
         });
     });
 
@@ -34,8 +34,12 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
             ws: ws,
             authority: routerAuthority,
             route: route,
-            targetLocation, targetLocation
+            targetLocation: targetLocation
         });
+    });
+
+    ws.on('error', function (err) {
+        console.log('Error from connector socket', err);
     });
 
     ws.on('message', function (data) {
@@ -47,18 +51,16 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
         if (targetRequest !== undefined) {
             // continuing an already established request
             try {
-                if ("_3" == new String(data)) {
+                if ("_3" === data) {
                     targetRequest.end();
-                }
-                else {
+                } else {
                     targetRequest.write(data);
                 }
             }
             catch (e) {
                 // encoding problem dealing with end?
             }
-        }
-        else {
+        } else {
             // We're using a socket so we reconnect
             routerClusterObject.emit("crankerHeadersReceived", {
                 connection: ws
@@ -108,16 +110,25 @@ let routerConnect = function (routerAuthority, route, targetLocation, routerClus
                 let headerLines = headerList.map(headerPair => headerPair.join(":"));
                 let headerBlock = headerLines.join("\n");
                 
-                ws.send(`HTTP/1.1 ${statusCode} ${statusMessage}\n${headerBlock}\n\n`);
+                ws.send(`HTTP/1.1 ${statusCode} ${statusMessage}\n${headerBlock}\n\n`, (err) => {
+                    err && console.log('Error sending request line to connector socket from ' + uri, err);
+                });
                 
                 targetResponse.on("data", (d) => {
-                    if (ws.readyState == 1) {
-                        ws.send(d);
+                    if (ws.readyState === 1) {
+                        ws.send(d, (err) => {
+                            err && console.log('Error sending data to connector socket from ' + uri, err);
+                        });
                     }
                 });
 
+                targetRequest.on("error", (err) => {
+                    console.log("Error from target server; closing websocket connection", err);
+                    ws.terminate();
+                });
+
                 targetResponse.on("end", () => {
-                    if (ws.readyState != 3) {
+                    if (ws.readyState !== 3) {
                         try {
                             ws.close();
                         }
@@ -155,7 +166,7 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                         // Flatten it
                         let cons = connections.reduce((acc, val) => acc.concat(val), []);
                         let notClosed = cons.filter(con => con.readyState < 3);
-                        if (notClosed.length == 0) {
+                        if (notClosed.length === 0) {
                             clearInterval(closeInterval);
                             resolve(true);
                         }
@@ -164,7 +175,7 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                     routers.forEach(router => {
                         clearInterval(router.interval);
                         Object.values(router.connections)
-                            .filter(ws => ws.readyState == 1)
+                            .filter(ws => ws.readyState === 1)
                             .forEach(ws => ws.close());
                     });
                 });
@@ -185,7 +196,7 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                     idleLimit: limit
                 });
 
-                while (closingState == false
+                while (closingState === false
                        && Object.keys(connections).length < limit) {
                     routerClusterObject.emit("crankedRouterConnecting", {
                         authority: routerAuthority,
@@ -224,7 +235,7 @@ const connectToRouters = function (routerAuthorityArray, route, targetLocation, 
                 
                 // loop through and ping
                 Object.values(connections).forEach(ws => {
-                    if (ws.readyState == 1) {
+                    if (ws.readyState === 1) {
                         ws.ping(_ => {
                             routerClusterObject.emit("crankedPing", {
                                 state: ws.readyState,
